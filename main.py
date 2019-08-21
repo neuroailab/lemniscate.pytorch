@@ -75,6 +75,8 @@ parser.add_argument('--nce-m', default=0.5, type=float,
                     help='momentum for non-parametric updates')
 parser.add_argument('--iter_size', default=1, type=int,
                     help='caffe style iter size')
+parser.add_argument('--auto_aug', action='store_true',
+                    help='Whether use augmentations found by AutoAugmentation')
 
 best_prec1 = 0
 
@@ -113,16 +115,29 @@ def main():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
-    train_dataset = datasets.ImageFolderInstance(
-        traindir,
-        transforms.Compose([
-            transforms.RandomResizedCrop(224, scale=(0.2,1.)),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+    if not args.auto_aug:
+        train_dataset = datasets.ImageFolderInstance(
+            traindir,
+            transforms.Compose([
+                transforms.RandomResizedCrop(224, scale=(0.2,1.)),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]))
+    else:
+        sys.path.append('/home/chengxuz/AutoAugment')
+        from autoaugment import ImageNetPolicy
+        train_dataset = datasets.ImageFolderInstance(
+            traindir,
+            transforms.Compose([
+                transforms.RandomResizedCrop(224, scale=(0.2,1.)),
+                transforms.RandomHorizontalFlip(),
+                ImageNetPolicy(),
+                transforms.ToTensor(),
+                normalize,
+            ]))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
